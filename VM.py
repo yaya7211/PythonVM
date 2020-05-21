@@ -1,155 +1,92 @@
 from sys import argv
-import abc
 
-f = open(argv[1], "r").read().split("\n")
-line = 0
-mem = []
-var = {}
+f = open(argv[1], "r").read().replace("\n", "").split(";")
+stack = [None, None]
+sett = {}
 
+def STR(*_):
+	strs = "0123456789ABCDEFGHIJKLMOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz\\/(()[]{ }-_'\"<>?!;:,.^%$£€"
+	final = []
+	for x in stack.pop(): final.append(strs[x])
+	stack.append(final)
 
+def OUT(*_): print(stack.pop())
 
+def LOAD(x):
+	try:
+		x = int(x) if not "/" in x else [int(y) for y in x.split("/")]
+	except TypeError:
+		x = parse
+	stack.append(x)
 
-def goDeepestIn(liste):
-	global mem
-	if liste == mem:
-		memou = mem
-	else: memou = liste
-	while len(memou) > 0 and type(memou[-1]) == list:
-		memou = memou[-1]
-	return memou 
+def CONC(*_): stack.append(stack.pop()+stack.pop())
 
-def typer(iterable):
-	typ, value = iterable.split(":")
-	if typ == "num": 
-		return float(value)
-	elif typ == "str": 
-		return value
-	elif typ == "var": 
-		return var[value]
+def SUP(*_):
+	if stack.pop() < stack.pop(): stack.append(1)
+	else: stack.append(0)
 
-def parent():
-	global memou
-	global mem
-	x = memou.copy()
-	memou = mem
-	while not x in memou:
-		memou = memou[-1]
-    
-def ADD(iterable):  
-    return 0 if not iterable else iterable[0] + ADD(iterable[1:])
+def INF(*_):
+	if stack.pop() > stack.pop(): stack.append(1)
+	else: stack.append(0)
 
-def STRC(iterable):   
-    return 0 if not iterable else iterable[0] - STRC(iterable[1:])
+def EQL(*_):
+	if stack.pop() == stack.pop(): stack.append(1)
+	else: stack.append(0)
 
-    
-def CONC(iterable):  
-    return "" if not iterable else iterable[0] + CONC(iterable[1:])
+def DIF(*_):
+	if stack.pop() != stack.pop(): stack.append(1)
+	else: stack.append(0)
 
-def MULT(iterable):  
-	return 1 if not iterable else iterable[0] * MULT(iterable[1:])
+def EVAL(x):
+	comparaisons = {"SUP":SUP,
+					"INF":INF,
+					"EQL":EQL,
+					"DIF":DIF}
+	comparaisons[x]()
 
+def ADD(*_): stack.append(stack.pop()+stack.pop())
 
-def DIV(iterable):  
-	return 1 if not iterable else iterable[0] / DIV(iterable[1:])
+def SUB(*_): stack.append(-stack.pop() + stack.pop())
 
-    
-def EXP(iterable):  
-    return 1 if not iterable else iterable[0] ** EXP(iterable[1:])
+def MUL(*_): stack.append(stack.pop() * stack.pop())
 
-    
-def INP(iterable):
-    return types(iterable[1])(input(iterable[0]))
+def DIV(*_): stack.append(1 / stack.pop() * stack.pop())
 
+def EXP(*_):
+	a, b = stack.pop(), stack.pop()
+	stack.append(b ** a)
 
-def OUT(*_):
-    print("".join(str(memou[-1])))
-
-    
-def LOAD(iterable):
-	return typer(iterable)
-
-    
-def SET(iterable):
-    typ, name = iterable.split(":")
-    if typ == "var": 
-    	var.update({name:goDeepestIn(mem)[-1]})
-
-    
-def JMP(l):
-    line = int(l)
-
-
-def NEXT(*_):
-	global memou
-	global mem
-	if memou == mem:
-		mem = []
-		memou = goDeepestIn(mem)
-	else:
-		parent()
-		del memou[-1]
-		memou.append([])
-		memou = goDeepestIn(mem)
-
-def openNewBloc(*_):
-	global mem
-	global memou
-	memou = goDeepestIn(mem)
-	memou.append([])
-	memou = goDeepestIn(mem)
-
-def closeBloc(*_):
-	global mem
-	global memou
-	m = memou.copy()
-	parent()
-	del memou[-1]
-	memou.append(m[-1])
-
-
-
-
-
-stockOutputInMem = {"ADD":ADD,
-                    "STRC":STRC,
-                    "CONC":CONC,
-                    "MULT":MULT,
-                    "EXP":EXP,
-                    "DIV":DIV,
-                    "INP":INP,
-                    "LOAD":LOAD}
-checkStockOUtputInMem = ["ADD", "STRC", "CONC", "MULT", "EXP", "DIV", "INP", "LOAD"]
-usesMemAsArg = ["ADD", "STRC", "CONC", "MULT", "EXP", "DIV", "OUT"]
-
-independantInstructions = {"SET":SET,
-						   "JMP":JMP,
-						   "NEXT":NEXT,
-						   "OUT":OUT,
-						   "{":openNewBloc,
-						   "}":closeBloc}
-
-memou = mem				                     
-while line < len(f):
-	instruction = f[line].split(" ")
-	instruction, args = instruction[0], " ".join(instruction[1:])
-	if instruction in checkStockOUtputInMem and instruction in usesMemAsArg: 
-		memou.append(stockOutputInMem[instruction](memou))
-	elif instruction in checkStockOUtputInMem: 
-		memou.append(stockOutputInMem[instruction](args)) 
+def IF(z):
+	if stack.pop(): return
 	else: 
-		independantInstructions[instruction](args)
-	line += 1
-	print(line, mem, memou, memou is goDeepestIn(mem), var)
+		global l
+		l += int(z)
 
-        
-                    
+def LABEL(*a):
+	sett.update({a[0]:a[1]})
 
-       
+instructions = {"LOAD":LOAD,
+				"ADD":ADD,
+				"SUB":SUB,
+				"MUL":MUL,
+				"DIV":DIV,
+				"EXP":EXP,
+				"OUT":OUT,
+				"CONC":CONC,
+				"EVAL":EVAL,
+				"STR":STR,
+				"IF":IF,
+				"LABEL":LABEL,
+				"#":lambda *_: 0,
+				"CLOAD":CLOAD
+}
 
-    
-
-
-#Calcules basiques et io
-#Instructions dans instructions
-#Créations de variables
-
+def parse(e):
+	l = 0
+	while l < e-1:
+		x = f[l] 
+		x = x.replace("\n", "")
+		x = x.split(" ")
+		instructions[x[0]](" ".join(x[1:]))
+		print(stack, l)
+		l += 1
